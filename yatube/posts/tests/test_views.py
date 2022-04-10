@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
-from posts.models import Group, Post
+from posts.models import Comment, Group, Post
 
 User = get_user_model()
 
@@ -25,6 +25,10 @@ class PostViewTests(TestCase):
             author=cls.user,
             text='Текст поста',
         )
+        cls.comment = Comment.objects.create(
+            text='some_text', author=cls.user, post=cls.post
+        )
+        print(cls.comment.text)
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -107,6 +111,46 @@ class PostViewTests(TestCase):
             with self.subTest(value=value):
                 form_field = response.context.get('form').fields.get(value)
                 self.assertIsInstance(form_field, expected)
+
+    def test_comment_adding_for_authorized_client(self):
+        """Проверка добавления комментария к посту."""
+
+        form_data = {
+            'comment': self.comment.text,
+        }
+        response = self.authorized_client.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
+            data=form_data,
+            follow=True,
+        )
+        self.post.refresh_from_db()
+        first_comment = response.context['comments'][0]
+        print(first_comment.text)
+        self.assertEqual(first_comment.text, form_data['comment'])
+
+        def test_cache(self):
+            with self.assertNumQueries(3):
+                response = self.authorized_client.get(reverse('posts:index'))
+                self.assertEqual(response.status_code, 200)
+                response = self.authorized_client.get(reverse('posts:index'))
+                self.assertEqual(response.status_code, 200)
+                response = self.authorized_client.get(reverse('posts:index'))
+                self.assertEqual(response.status_code, 200)
+
+    # def test_cash_work(self):
+    #     """Проверяем кэширование на главной."""
+    #     response = self.authorized_client.get(reverse('posts:index'))
+    #     first_object = response.content
+    #     form_data = {
+    #         'title': 'Тестовый заголовок2221111',
+    #         'text': 'Тестовый текст22221111',
+    #     }
+    #     response2 = self.authorized_client.post(
+    #         reverse('posts:post_create'), data=form_data, follow=True
+    #     )
+    #     response = self.authorized_client.get(reverse('posts:index'))
+    #     second_object = response.content
+    #     self.assertEqual(first_object, second_object)
 
 
 class PaginatorViewsTest(TestCase):

@@ -93,12 +93,10 @@ class PostFormTests(TestCase):
             data=form_data,
             follow=True,
         )
-        foto = form_data['image']
         self.assertRedirects(
             response,
             reverse('posts:post_detail', args={self.post.pk}),
         )
-        print(foto)
 
         self.post.refresh_from_db()
         print(self.post.image)

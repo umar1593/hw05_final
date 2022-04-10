@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
-
-from posts.models import Group, Post
+from posts.models import Comment, Group, Post
 
 User = get_user_model()
 
@@ -19,6 +18,9 @@ class PostURLTests(TestCase):
         cls.post = Post.objects.create(
             author=cls.user,
             text='Текст поста',
+        )
+        cls.comment = Comment.objects.create(
+            text='some_text', author=cls.user, post=cls.post
         )
 
     def setUp(self):
@@ -56,6 +58,15 @@ class PostURLTests(TestCase):
         """Запрос к страница unixisting_page вернет ошибку 404"""
         response = self.client.get('/unixisting_page/')
         self.assertEqual(response.status_code, 404)
+
+    def test_add_comment_url_redirect_user(self):
+        """Страница posts/<int:post_id>/comment/ перенаправляет
+        authorized_clientна posts:post_detail."""
+        response = self.authorized_client.get(
+            f'/posts/{self.post.id}/comment/'
+        )
+        self.assertRedirects(response, (f'/posts/{self.post.id}/'))
+        self.assertEqual(response.status_code, 302)
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
