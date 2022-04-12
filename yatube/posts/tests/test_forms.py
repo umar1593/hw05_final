@@ -99,7 +99,6 @@ class PostFormTests(TestCase):
         )
 
         self.post.refresh_from_db()
-        print(self.post.image)
         self.assertEqual(self.post.text, form_data['text'])
         self.assertEqual(self.post.group.pk, form_data['group'])
         self.assertEqual(self.post.image.name, 'posts/' + uploaded.name)

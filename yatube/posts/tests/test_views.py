@@ -1,7 +1,11 @@
+import shutil
+import tempfile
+
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from posts.models import Comment, Group, Post
 
@@ -28,7 +32,6 @@ class PostViewTests(TestCase):
         cls.comment = Comment.objects.create(
             text='some_text', author=cls.user, post=cls.post
         )
-        print(cls.comment.text)
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -125,7 +128,6 @@ class PostViewTests(TestCase):
         )
         self.post.refresh_from_db()
         first_comment = response.context['comments'][0]
-        print(first_comment.text)
         self.assertEqual(first_comment.text, form_data['comment'])
 
         def test_cache(self):
@@ -136,21 +138,6 @@ class PostViewTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 response = self.authorized_client.get(reverse('posts:index'))
                 self.assertEqual(response.status_code, 200)
-
-    # def test_cash_work(self):
-    #     """Проверяем кэширование на главной."""
-    #     response = self.authorized_client.get(reverse('posts:index'))
-    #     first_object = response.content
-    #     form_data = {
-    #         'title': 'Тестовый заголовок2221111',
-    #         'text': 'Тестовый текст22221111',
-    #     }
-    #     response2 = self.authorized_client.post(
-    #         reverse('posts:post_create'), data=form_data, follow=True
-    #     )
-    #     response = self.authorized_client.get(reverse('posts:index'))
-    #     second_object = response.content
-    #     self.assertEqual(first_object, second_object)
 
 
 class PaginatorViewsTest(TestCase):
@@ -188,3 +175,79 @@ class PaginatorViewsTest(TestCase):
             self.assertEqual(posts_count, self.remaining_posts)
         else:
             self.assertEqual(posts_count, settings.POSTS_ON_PAGE)
+
+
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
+
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+class ImageViewTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='StasBasov')
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(cls.user)
+        cls.group = Group.objects.create(
+            title='Тестовая группа',
+            slug='test-slug',
+            description='Тестовое описание',
+        )
+        cls.small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif', content=cls.small_gif, content_type='image/gif'
+        )
+        cls.post = Post.objects.create(
+            group=cls.group,
+            author=cls.user,
+            text='Текст поста',
+            image=cls.uploaded,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def auxiliary_method(self, post):
+        self.assertEqual(post.text, self.post.text)
+        self.assertEqual(post.author.username, self.user.username)
+        self.assertEqual(post.group.title, self.group.title)
+        self.assertEqual(post.image.name, self.post.image.name)
+
+    def test_idnex_show_correct_context(self):
+        """Шаблон index сформирован с правильным контекстом."""
+        response = self.authorized_client.get(reverse('posts:index'))
+        first_object = response.context['page_obj'][0]
+        self.auxiliary_method(first_object)
+
+    def test_profile_show_correct_context(self):
+        """Шаблон index сформирован с правильным контекстом."""
+        response = self.authorized_client.get(
+            reverse('posts:profile', args={self.user})
+        )
+        first_object = response.context['page_obj'][0]
+        self.auxiliary_method(first_object)
+
+    def test_group_list_show_correct_context(self):
+        """Шаблон group_list сформирован с правильным контекстом."""
+        response = self.authorized_client.get(
+            reverse('posts:group_list', kwargs={'slug': self.group.slug})
+        )
+        first_object = response.context['page_obj'][0]
+        self.auxiliary_method(first_object)
+
+    def test_post_detail_show_correct_context(self):
+        """Шаблон post_detail сформирован с правильным контекстом."""
+        response = self.authorized_client.get(
+            reverse('posts:post_detail', args={self.post.pk})
+        )
+        first_object = response.context['post']
+        self.auxiliary_method(first_object)

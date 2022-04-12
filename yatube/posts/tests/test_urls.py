@@ -28,11 +28,11 @@ class PostURLTests(TestCase):
         self.authorized_client.force_login(self.user)
 
     def test_the_urls_exists_at_desired_locations(self):
-        """Страница словаря urls доступнs пользователям."""
+        """Страница словаря urls доступна пользователям."""
         urls = {
             'one': self.client.get('/'),
             'two': self.client.get(f'/group/{self.group.slug}/'),
-            'three': self.client.get(f'/profile/{self.user}/'),
+            'three': self.authorized_client.get(f'/profile/{self.user}/'),
             'four': self.client.get(f'/posts/{self.post.id}/'),
             'five': self.authorized_client.get(f'/posts/{self.post.id}/edit/'),
             'six': self.authorized_client.get('/create/'),
