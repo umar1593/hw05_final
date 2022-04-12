@@ -36,7 +36,9 @@ def profile(request, username):
     page_number = request.GET.get('page')
     page_obj = get_page_obj(posts, page_number)
     user = request.user
-    following = user.follower.filter(author=author).exists()
+    following = False
+    if request.user.is_authenticated:
+        following = user.follower.filter(author=author).exists()
     context = {
         'count': count,
         'author': author,

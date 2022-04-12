@@ -32,7 +32,7 @@ class PostURLTests(TestCase):
         urls = {
             'one': self.client.get('/'),
             'two': self.client.get(f'/group/{self.group.slug}/'),
-            'three': self.authorized_client.get(f'/profile/{self.user}/'),
+            'three': self.client.get(f'/profile/{self.user}/'),
             'four': self.client.get(f'/posts/{self.post.id}/'),
             'five': self.authorized_client.get(f'/posts/{self.post.id}/edit/'),
             'six': self.authorized_client.get('/create/'),
