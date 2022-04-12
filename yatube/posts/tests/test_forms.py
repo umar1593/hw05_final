@@ -102,3 +102,87 @@ class PostFormTests(TestCase):
         self.assertEqual(self.post.text, form_data['text'])
         self.assertEqual(self.post.group.pk, form_data['group'])
         self.assertEqual(self.post.image.name, 'posts/' + uploaded.name)
+
+
+class TestFollow(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='Umarrrr')
+        cls.user_1 = User.objects.create_user(username='first')
+        cls.user_2 = User.objects.create_user(username='second')
+        cls.post = Post.objects.create(text='Тестовый текст', author=cls.user)
+
+    def setUp(self):
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+
+    def test_follow_auth(self):
+        assert (
+            self.user.follower.count() == 0
+        ), 'Проверьте, что правильно считается подписки'
+        self.authorized_client.get(
+            f'/profile/{self.post.author.username}/follow/'
+        )
+        print(self.user.follower.count())
+        assert (
+            self.user.follower.count() == 0
+        ), 'Проверьте, что нельзя подписаться на самого себя'
+
+        self.authorized_client.get(f'/profile/{self.user_1.username}/follow/')
+        assert (
+            self.user.follower.count() == 1
+        ), 'Проверьте, что вы можете подписаться на пользователя'
+        # self.authorized_client.get(f'/profile/{self.user_1.username}/follow/')
+        # assert (
+        #     self.user.follower.count() == 1
+        # ), 'Проверьте, что вы можете подписаться на пользователя не'
+        # 'более чем один раз'
+
+        Post.objects.create(text='Тестовый пост 4564534', author=self.user_1)
+        Post.objects.create(text='Тестовый пост 354745', author=self.user_1)
+
+        Post.objects.create(text='Тестовый пост 245456', author=self.user_2)
+        Post.objects.create(text='Тестовый пост 9789', author=self.user_2)
+        Post.objects.create(text='Тестовый пост 4574', author=self.user_2)
+
+        response = self.authorized_client.get('/follow/')
+
+        assert (
+            len(response.context['page_obj']) == 2
+        ), 'Проверьте, что на странице `/follow/` список статей'
+        'авторов на которых подписаны'
+
+        self.authorized_client.get(f'/profile/{self.user_2.username}/follow/')
+        assert (
+            self.user.follower.count() == 2
+        ), 'Проверьте, что вы можете подписаться на пользователя'
+        response = self.authorized_client.get('/follow/')
+        assert (
+            len(response.context['page_obj']) == 5
+        ), 'Проверьте, что на странице `/follow/` список статей авторов'
+        'на которых подписаны'
+
+        self.authorized_client.get(
+            f'/profile/{self.user_1.username}/unfollow/'
+        )
+        assert (
+            self.user.follower.count() == 1
+        ), 'Проверьте, что вы можете отписаться от пользователя'
+        response = self.authorized_client.get('/follow/')
+        assert (
+            len(response.context['page_obj']) == 3
+        ), 'Проверьте, что на странице `/follow/` список статей авторов'
+        'на которых подписаны'
+
+        self.authorized_client.get(
+            f'/profile/{self.user_2.username}/unfollow/'
+        )
+        assert (
+            self.user.follower.count() == 0
+        ), 'Проверьте, что вы можете отписаться от пользователя'
+        response = self.authorized_client.get('/follow/')
+        assert (
+            len(response.context['page_obj']) == 0
+        ), 'Проверьте, что на странице `/follow/` список статей авторов на'
+        'которых подписаны'

@@ -105,14 +105,15 @@ def add_comment(request, post_id):
 @login_required
 def follow_index(request):
     fav_posts = Post.objects.filter(author__following__user=request.user)
-    context = {'posts': fav_posts}
+    page_obj = get_page_obj(fav_posts, request.GET.get('page'))
+    context = {'page_obj': page_obj}
     return render(request, 'posts/follow.html', context)
 
 
 @login_required
 def profile_follow(request, username):
-    author = User.objects.get(username=username)
-    if author != request.user.follower:
+    author = get_object_or_404(User, username=username)
+    if author != request.user:
         Follow.objects.create(author=author, user=request.user)
     return redirect('posts:follow_index')
 
