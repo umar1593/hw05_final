@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from posts.models import Group, Post
+from posts.models import Follow, Group, Post
 
 User = get_user_model()
 
@@ -104,85 +104,47 @@ class PostFormTests(TestCase):
         self.assertEqual(self.post.image.name, 'posts/' + uploaded.name)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class TestFollow(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username='Umarrrr')
-        cls.user_1 = User.objects.create_user(username='first')
-        cls.user_2 = User.objects.create_user(username='second')
-        cls.post = Post.objects.create(text='Тестовый текст', author=cls.user)
+        cls.user_foller = User.objects.create_user(username='Подписчик')
+        cls.user_folling = User.objects.create_user(username='Автор')
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
+        self.authorized_client_foller = Client()
+        self.authorized_client_folling = Client()
+        self.authorized_client_foller.force_login(self.user_foller)
+        self.authorized_client_folling.force_login(self.user_folling)
 
-    def test_follow_auth(self):
-        assert (
-            self.user.follower.count() == 0
-        ), 'Проверьте, что правильно считается подписки'
-        self.authorized_client.get(
-            f'/profile/{self.post.author.username}/follow/'
+    def test_follow_and_unfollow(self):
+        Post.objects.create(
+            text='Тестовый пост 4564534', author=self.user_foller
         )
-        print(self.user.follower.count())
-        assert (
-            self.user.follower.count() == 0
-        ), 'Проверьте, что нельзя подписаться на самого себя'
-
-        self.authorized_client.get(f'/profile/{self.user_1.username}/follow/')
-        assert (
-            self.user.follower.count() == 1
-        ), 'Проверьте, что вы можете подписаться на пользователя'
-        # self.authorized_client.get(f'/profile/{self.user_1.username}/follow/')
-        # assert (
-        #     self.user.follower.count() == 1
-        # ), 'Проверьте, что вы можете подписаться на пользователя не'
-        # 'более чем один раз'
-
-        Post.objects.create(text='Тестовый пост 4564534', author=self.user_1)
-        Post.objects.create(text='Тестовый пост 354745', author=self.user_1)
-
-        Post.objects.create(text='Тестовый пост 245456', author=self.user_2)
-        Post.objects.create(text='Тестовый пост 9789', author=self.user_2)
-        Post.objects.create(text='Тестовый пост 4574', author=self.user_2)
-
-        response = self.authorized_client.get('/follow/')
-
-        assert (
-            len(response.context['page_obj']) == 2
-        ), 'Проверьте, что на странице `/follow/` список статей'
-        'авторов на которых подписаны'
-
-        self.authorized_client.get(f'/profile/{self.user_2.username}/follow/')
-        assert (
-            self.user.follower.count() == 2
-        ), 'Проверьте, что вы можете подписаться на пользователя'
-        response = self.authorized_client.get('/follow/')
-        assert (
-            len(response.context['page_obj']) == 5
-        ), 'Проверьте, что на странице `/follow/` список статей авторов'
-        'на которых подписаны'
-
-        self.authorized_client.get(
-            f'/profile/{self.user_1.username}/unfollow/'
+        Post.objects.create(
+            text='Тестовый пост 9789', author=self.user_folling
         )
-        assert (
-            self.user.follower.count() == 1
-        ), 'Проверьте, что вы можете отписаться от пользователя'
-        response = self.authorized_client.get('/follow/')
-        assert (
-            len(response.context['page_obj']) == 3
-        ), 'Проверьте, что на странице `/follow/` список статей авторов'
-        'на которых подписаны'
-
-        self.authorized_client.get(
-            f'/profile/{self.user_2.username}/unfollow/'
+        Post.objects.create(
+            text='Тестовый пост 4574', author=self.user_folling
         )
-        assert (
-            self.user.follower.count() == 0
-        ), 'Проверьте, что вы можете отписаться от пользователя'
-        response = self.authorized_client.get('/follow/')
-        assert (
-            len(response.context['page_obj']) == 0
-        ), 'Проверьте, что на странице `/follow/` список статей авторов на'
-        'которых подписаны'
+        count = Follow.objects.all().count()
+        self.authorized_client_foller.get(
+            f'/profile/{self.user_folling.username}/follow/'
+        )
+        count = Follow.objects.all().count()
+        self.assertEqual(count, 1)
+        response = self.authorized_client_foller.get('/follow/')
+
+        self.assertEqual(len(response.context['page_obj']), 2)
+
+        self.authorized_client_foller.get(
+            f'/profile/{self.user_folling.username}/unfollow/'
+        )
+        count = Follow.objects.all().count()
+        self.assertEqual(count, 0)
