@@ -130,14 +130,21 @@ class PostViewTests(TestCase):
         first_comment = response.context['comments'][0]
         self.assertEqual(first_comment.text, form_data['comment'])
 
-        def test_cache(self):
-            with self.assertNumQueries(3):
-                response = self.authorized_client.get(reverse('posts:index'))
-                self.assertEqual(response.status_code, 200)
-                response = self.authorized_client.get(reverse('posts:index'))
-                self.assertEqual(response.status_code, 200)
-                response = self.authorized_client.get(reverse('posts:index'))
-                self.assertEqual(response.status_code, 200)
+    def test_cache(self):
+        """Проверяем кэширование index."""
+
+        response = self.authorized_client.get(reverse('posts:index'))
+        first_object = response.content
+        form_data = {
+            'title': 'Тестовый заголовок',
+            'text': 'Тестовый текст',
+        }
+        self.authorized_client.post(
+            reverse('posts:post_create'), data=form_data, follow=True
+        )
+        response = self.authorized_client.get(reverse('posts:index'))
+        second_object = response.content
+        self.assertEqual(first_object, second_object)
 
 
 class PaginatorViewsTest(TestCase):

@@ -11,9 +11,7 @@ User = get_user_model()
 def index(request):
     post_list = Post.objects.all()
     page_obj = get_page_obj(post_list, request.GET.get('page'))
-    context = {
-        'page_obj': page_obj,
-    }
+    context = {'page_obj': page_obj, 'index': True}
     return render(request, 'posts/index.html', context)
 
 
@@ -38,8 +36,7 @@ def profile(request, username):
     user = request.user
     following = False
     if request.user.is_authenticated:
-        if user.follower.filter(author=author).exists():
-            following = True
+        following = user.follower.filter(author=author).exists()
     context = {
         'count': count,
         'author': author,
@@ -107,19 +104,18 @@ def add_comment(request, post_id):
 def follow_index(request):
     fav_posts = Post.objects.filter(author__following__user=request.user)
     page_obj = get_page_obj(fav_posts, request.GET.get('page'))
-    context = {'page_obj': page_obj}
+    context = {'page_obj': page_obj, 'follow': True}
     return render(request, 'posts/follow.html', context)
 
 
+@login_required
 def profile_follow(request, username):
     user = request.user
     author = get_object_or_404(User, username=username)
-    if user.is_authenticated:
-        following = Follow.objects.filter(user=user, author=author)
-        if request.user != author and not following.exists():
-            Follow.objects.get_or_create(user=request.user, author=author)
-        return redirect('posts:profile', username)
-    return redirect('users:login')
+    following = Follow.objects.filter(user=user, author=author)
+    if request.user != author and not following.exists():
+        Follow.objects.create(user=request.user, author=author)
+    return redirect('posts:profile', username)
 
 
 @login_required

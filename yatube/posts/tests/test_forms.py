@@ -111,6 +111,9 @@ class TestFollow(TestCase):
         super().setUpClass()
         cls.user_foller = User.objects.create_user(username='Подписчик')
         cls.user_folling = User.objects.create_user(username='Автор')
+        cls.count = Follow.objects.filter(
+            user=cls.user_foller, author=cls.user_folling
+        ).count()
 
     @classmethod
     def tearDownClass(cls):
@@ -123,7 +126,7 @@ class TestFollow(TestCase):
         self.authorized_client_foller.force_login(self.user_foller)
         self.authorized_client_folling.force_login(self.user_folling)
 
-    def test_follow_and_unfollow(self):
+    def test_follow(self):
         Post.objects.create(
             text='Тестовый пост 4564534', author=self.user_foller
         )
@@ -133,18 +136,24 @@ class TestFollow(TestCase):
         Post.objects.create(
             text='Тестовый пост 4574', author=self.user_folling
         )
-        count = Follow.objects.all().count()
         self.authorized_client_foller.get(
-            f'/profile/{self.user_folling.username}/follow/'
+            reverse('posts:profile_follow', args={self.user_folling.username})
         )
-        count = Follow.objects.all().count()
-        self.assertEqual(count, 1)
+        self.count = Follow.objects.filter(
+            user=self.user_foller, author=self.user_folling
+        ).count()
+        self.assertEqual(self.count, 1)
         response = self.authorized_client_foller.get('/follow/')
 
         self.assertEqual(len(response.context['page_obj']), 2)
 
+    def test_unfollow(self):
         self.authorized_client_foller.get(
-            f'/profile/{self.user_folling.username}/unfollow/'
+            reverse(
+                'posts:profile_unfollow', args={self.user_folling.username}
+            )
         )
-        count = Follow.objects.all().count()
-        self.assertEqual(count, 0)
+        self.count = Follow.objects.filter(
+            user=self.user_foller, author=self.user_folling
+        ).count()
+        self.assertEqual(self.count, 0)
