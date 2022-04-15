@@ -4,6 +4,7 @@ import tempfile
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -135,17 +136,19 @@ class PostViewTests(TestCase):
         """Проверяем кэширование index."""
 
         response = self.authorized_client.get(reverse('posts:index'))
-        first_object = response.content
-        form_data = {
-            'title': 'Тестовый заголовок',
-            'text': 'Тестовый текст',
-        }
-        self.authorized_client.post(
-            reverse('posts:post_create'), data=form_data, follow=True
+        first_time_data = response.content
+        Post.objects.create(
+            group=self.group,
+            author=self.user,
+            text='Текст поста жи есть',
         )
         response = self.authorized_client.get(reverse('posts:index'))
-        second_object = response.content
-        self.assertEqual(first_object, second_object)
+        second_time_data = response.content
+        self.assertEqual(first_time_data, second_time_data)
+        cache.clear()
+        response = self.authorized_client.get(reverse('posts:index'))
+        third_time_data = response.content
+        self.assertFalse(first_time_data == third_time_data)
 
 
 class PaginatorViewsTest(TestCase):

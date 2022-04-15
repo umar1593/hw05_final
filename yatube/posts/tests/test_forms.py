@@ -144,8 +144,9 @@ class TestFollow(TestCase):
             user=self.user_foller, author=self.user_folling
         ).count()
         self.assertEqual(self.count, 1)
-        response = self.authorized_client_foller.get('/follow/')
-
+        response = self.authorized_client_foller.get(
+            reverse('posts:follow_index')
+        )
         self.assertEqual(len(response.context['page_obj']), 2)
 
     def test_unfollow(self):
