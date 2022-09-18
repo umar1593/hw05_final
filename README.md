@@ -12,7 +12,7 @@
 Запуск:
 
 Клонировать репозиторий:
-    <git clone https://github.com/DevCatRain/hw05_final.git>
+    <git clone https://github.com/umar1593/hw05_final.git>
 
 перейти в него в командной строке:
     <cd api_yamdb>
