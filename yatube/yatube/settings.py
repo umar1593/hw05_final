@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.getenv('SECRET_KEY')
-DEBUG = True
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS')
+SECRET_KEY = os.getenv('SECRET_KEY', 'local')
+DEBUG = True
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
